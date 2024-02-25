@@ -31,7 +31,7 @@ typedef enum {
   /**< Action SELECT (depth++). */
   NAVIGATE_BACK,
   /**< Action BACH (depth--). */
-  NAVIGATE_NOTHIN,
+  NAVIGATE_NOTHING,
   /**< Nothing. */
 } Navigate_t;
 
