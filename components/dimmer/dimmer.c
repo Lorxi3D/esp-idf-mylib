@@ -26,9 +26,9 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
         auto_frequency(dimmer);
     #else
         #ifdef CONFIG_FREQUENCY_60HZ
-            dimmer->heartz = 60 * 2000; // multiply by 2000 to obtain half wave and 1000 ticks
+            dimmer->heartz = 60; // multiply by 2000 to obtain half wave and 1000 ticks
         #elif defined(CONFIG_FREQUENCY_50HZ)
-            dimmer->heartz = 50 * 2000; // multiply by 2000 to obtain half wave and 1000 ticks
+            dimmer->heartz = 50; // multiply by 2000 to obtain half wave and 1000 ticks
         #endif
     #endif
 
@@ -36,7 +36,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
     mcpwm_timer_config_t timer_config = {
         .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
         .group_id = dimmer->id,
-        .resolution_hz = dimmer->heartz, // multiply by 1000 to get 1000 ticks per period
+        .resolution_hz = dimmer->heartz * 2000, // multiply by 2000 to get 1000 ticks per (half) period
         .period_ticks = 1000,
         .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
     };
@@ -131,14 +131,23 @@ esp_err_t set_duty( dimmer_t *dimmer, uint16_t dutty ) {
 
 }
 
-esp_err_t set_power(dimmer_t *dimmer, uint8_t power) {
+esp_err_t set_power(dimmer_t *dimmer, float power) {
     // Validate dutty
+    if( power < 0 ) {
+        power = 0;
+    }
     if( power > 100) {
         power = 100;
     }
 
+    
+    power /= 100; // normalize power 0 - 1
+
     // convert power to dutty
-    uint16_t dutty = pow(sin( ((double) power)/100),2) * 1000;
+    // V(t) = 127 * sin( 2*pi*f t )
+    // integral = - 127 cos( 2*pi*f)
+    // half wave area = 127 / 60 * pi
+    uint16_t dutty = sin( 2*M_PI* dimmer->heartz ) * 1000;
 
     set_duty(dimmer, dutty);
 

@@ -24,7 +24,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio);
 esp_err_t auto_frequency(dimmer_t *dimmer); // automatic frequency detection
 esp_err_t set_frequency(dimmer_t *dimmer, float freq); // manual frequency detection
 esp_err_t set_duty(dimmer_t *dimmer, uint16_t dutty);
-esp_err_t set_power(dimmer_t *dimmer, uint8_t power);
+esp_err_t set_power(dimmer_t *dimmer, float power);
 uint8_t get_power(dimmer_t *dimmer);
 esp_err_t start_dimmer(dimmer_t *dimmer);
 esp_err_t stop_dimmer(dimmer_t *dimmer);
