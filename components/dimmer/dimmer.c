@@ -4,12 +4,18 @@ const static char *TAG = "dimmer";
 
 uint8_t global_dimmer_count = 0; // initialize the global dimmer count
 
-
+/**
+ * This function will initialize a dimmer struct with the given GPIOs
+ * @param *dimmer a pointer to the dimmer the struct
+ * @param gen_gpio the GPIO number to generate the PWM signal
+ * @param sync_gpio the GPIO number to sync the zero-crossing signal
+ * @return esp_err_t ESP_OK
+*/
 esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
 {
     // Check if the GPIOs are valid
-    ESP_RETURN_ON_FALSE(GPIO_IS_VALID_GPIO(gen_gpio), ESP_ERR_INVALID_ARG, TAG, "GPIO (%d) is invalid for generate PWM", gen_gpio);
-    ESP_RETURN_ON_FALSE(GPIO_IS_VALID_GPIO(sync_gpio), ESP_ERR_INVALID_ARG, TAG, "GPIO (%d) is invalid for syncing", gen_gpio);
+    // ESP_RETURN_ON_FALSE(GPIO_IS_VALID_GPIO(gen_gpio), ESP_ERR_INVALID_ARG, TAG, "GPIO (%d) is invalid for generate PWM", gen_gpio);
+    // ESP_RETURN_ON_FALSE(GPIO_IS_VALID_GPIO(sync_gpio), ESP_ERR_INVALID_ARG, TAG, "GPIO (%d) is invalid for syncing", gen_gpio);
 
     // Initialize the dimmer values
     dimmer->id = global_dimmer_count;
@@ -25,7 +31,6 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
             dimmer->heartz = 50 * 2000; // multiply by 2000 to obtain half wave and 1000 ticks
         #endif
     #endif
-    
 
     ESP_LOGI(TAG, "Create timer");
     mcpwm_timer_config_t timer_config = {
@@ -43,11 +48,9 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
         .group_id = dimmer->id, // operator should be in the same group of the above timers
     };
     ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config, &operator));
-    
 
     ESP_LOGI(TAG, "Connect timers and operators with each other");
     ESP_ERROR_CHECK(mcpwm_operator_connect_timer(operator, dimmer->timer));
-    
 
     ESP_LOGI(TAG, "Create comparators");
     mcpwm_comparator_config_t compare_config = {
@@ -55,30 +58,29 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
     };
     ESP_ERROR_CHECK(mcpwm_new_comparator(operator, &compare_config, &dimmer->comparator));
     // init compare for each comparator
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(dimmer->comparator, 0));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(dimmer->comparator, dimmer->dutty));
     
     ESP_LOGI(TAG, "Create generators");
-    mcpwm_gen_handle_t generator;
     mcpwm_generator_config_t gen_config = {
         .gen_gpio_num = gen_gpio,
     };
-    ESP_ERROR_CHECK(mcpwm_new_generator(operator, &gen_config, &generator));
+    ESP_ERROR_CHECK(mcpwm_new_generator(operator, &gen_config, &dimmer->generator));
     
 
     ESP_LOGI(TAG, "Set generator actions on timer and compare event");
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator,
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(dimmer->generator,
                                                                 // when the timer value is zero, and is counting up, set output to high
                                                                 MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator,
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(dimmer->generator,
                                                                 // when compare event happens, and timer is counting up, set output to low
                                                                 MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, dimmer->comparator, MCPWM_GEN_ACTION_LOW)));
     
     ESP_LOGI(TAG, "Start timer");
     ESP_ERROR_CHECK(mcpwm_timer_enable(dimmer->timer));
-    // ESP_ERROR_CHECK(mcpwm_timer_start_stop(dimmer->timer, MCPWM_TIMER_START_NO_STOP));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(dimmer->timer, MCPWM_TIMER_START_NO_STOP));
 
     ESP_LOGI(TAG, "Force the output level to low, timer still running");
-    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator, 0, true));
+    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, 0, true));
     
 
     ESP_LOGI(TAG, "Setup sync strategy");
@@ -102,6 +104,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio)
         .sync_src = gpio_sync_source,
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(dimmer->timer, &sync_phase_config));
+    ESP_LOGI(TAG, "Dimmer created successfully");
     
     // Increment the global dimmer count
     global_dimmer_count++;
@@ -137,7 +140,7 @@ esp_err_t set_power(dimmer_t *dimmer, uint8_t power) {
     // convert power to dutty
     uint16_t dutty = pow(sin( ((double) power)/100),2) * 1000;
 
-    set_duty( dimmer, dutty);
+    set_duty(dimmer, dutty);
 
     return ESP_OK;
 }
@@ -148,7 +151,8 @@ esp_err_t set_power(dimmer_t *dimmer, uint8_t power) {
  * @return esp_err_t ESP_OK
 */
 esp_err_t start_dimmer( dimmer_t *dimmer ) {
-    ESP_ERROR_CHECK(mcpwm_timer_start_stop(dimmer->timer, MCPWM_TIMER_START_NO_STOP));
+    // ESP_ERROR_CHECK(mcpwm_timer_start_stop(dimmer->timer, MCPWM_TIMER_START_NO_STOP));
+    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, -1, true));
     return ESP_OK;
 
 }
@@ -159,6 +163,8 @@ esp_err_t start_dimmer( dimmer_t *dimmer ) {
  * @return esp_err_t ESP_OK
 */
 esp_err_t stop_dimmer( dimmer_t *dimmer ) {
-    ESP_ERROR_CHECK(mcpwm_timer_start_stop(dimmer->timer, MCPWM_TIMER_STOP_EMPTY));
+    // ESP_ERROR_CHECK(mcpwm_timer_start_stop(dimmer->timer, MCPWM_TIMER_STOP_EMPTY));
+    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, 0, true));
+
     return ESP_OK;
 }

@@ -12,12 +12,12 @@ void app_main(void) {
   while(1) {
     for( uint16_t i=0; i < 1000; i+=100) {
       ESP_ERROR_CHECK(set_duty( &dimmer, i));
-      printf("PWM dutty: %d\n", i);
+      printf("PWM dutty: %d\n", dimmer.dutty);
       vTaskDelay(pdMS_TO_TICKS(1000));
     }
     for( uint16_t i=1000; i > 0; i-=100) {
       ESP_ERROR_CHECK(set_duty( &dimmer, i));
-      printf("PWM dutty: %d\n", i);
+      printf("PWM dutty: %d\n", dimmer.dutty);
       vTaskDelay(pdMS_TO_TICKS(1000));
     }
       vTaskDelay(pdMS_TO_TICKS(10));
