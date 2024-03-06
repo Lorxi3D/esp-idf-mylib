@@ -6,11 +6,11 @@
 #include "driver/gpio.h"
 #include <math.h>
 
-extern uint8_t global_dimmer_count;
+extern int8_t global_dimmer_groups[SOC_MCPWM_GROUPS];
+extern uint32_t global_dimmer_generators;
 
 typedef struct dimmer
 {
-    uint8_t              id;        // internal management
     mcpwm_timer_handle_t timer;     // internal management
     mcpwm_cmpr_handle_t  comparator;// internal management
     mcpwm_gen_handle_t   generator; // internal management
@@ -23,8 +23,8 @@ typedef struct dimmer
 esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio);
 esp_err_t auto_frequency(dimmer_t *dimmer); // automatic frequency detection
 esp_err_t set_frequency(dimmer_t *dimmer, float freq); // manual frequency detection
-esp_err_t set_duty(dimmer_t *dimmer, uint16_t dutty);
-esp_err_t set_power(dimmer_t *dimmer, float power);
+esp_err_t set_dutty(dimmer_t *dimmer, uint16_t dutty);
+esp_err_t set_power(dimmer_t *dimmer, double power);
 uint8_t get_power(dimmer_t *dimmer);
 esp_err_t start_dimmer(dimmer_t *dimmer);
 esp_err_t stop_dimmer(dimmer_t *dimmer);
