@@ -125,11 +125,11 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
 
     ESP_LOGI(TAG, "Set generator actions on timer and compare event");
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(dimmer->generator,
-                                                                // when the timer value is zero, and is counting up, set output to high
-                                                                MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+                                                                // when the timer value is zero, and is counting up, set output to low
+                                                                MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(dimmer->generator,
-                                                                // when compare event happens, and timer is counting up, set output to low
-                                                                MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, dimmer->comparator, MCPWM_GEN_ACTION_LOW)));
+                                                                // when compare event happens, and timer is counting up, set output to high
+                                                                MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, dimmer->comparator, MCPWM_GEN_ACTION_HIGH)));
 
     ESP_LOGI(TAG, "Start timer");
     ESP_ERROR_CHECK(mcpwm_timer_enable(dimmer->timer));
@@ -193,6 +193,9 @@ esp_err_t set_dutty( dimmer_t *dimmer, uint16_t dutty ) {
     }
 
     dimmer->dutty = dutty;
+
+    dutty = 1000 - dutty; // Invert signal
+
     ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(dimmer->comparator, dutty));
 
     return ESP_OK;
@@ -325,11 +328,12 @@ void task_dimmer(void *arg) {
 
     ESP_LOGI(TAG, "Set generator actions on timer and compare event");
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator,
-                                                                // when the timer value is zero, and is counting up, set output to high
-                                                                MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+                                                                // when the timer value is zero, and is counting up, set output to low
+                                                                MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator,
-                                                                // when compare event happens, and timer is counting up, set output to low
-                                                                MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparator, MCPWM_GEN_ACTION_LOW)));
+                                                                // when compare event happens, and timer is counting up, set output to high
+                                                                MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comparator, MCPWM_GEN_ACTION_HIGH)));
+
 
     ESP_LOGI(TAG, "Start timer");
     ESP_ERROR_CHECK(mcpwm_timer_enable(timer));
@@ -364,7 +368,6 @@ void task_dimmer(void *arg) {
         if ( xTaskNotifyWait(0, ULONG_MAX, &dutty, portMAX_DELAY) == pdTRUE ) {
             ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comparator, dutty));
         }
-        // vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -414,8 +417,9 @@ esp_err_t set_task_dimmer_dutty( task_dimmer_t* dimmer,uint16_t dutty ) {
         dutty = 1000;
     }
 
-    // update dutty
-    dimmer->dutty = dutty;
+    dimmer->dutty = dutty; // update dutty struct
+
+    dutty = 1000 - dutty; // Invert signal
 
     // Notify to queue
     if( xTaskNotify(dimmer->task, dutty, eSetValueWithOverwrite) != pdTRUE ) {
@@ -441,15 +445,17 @@ esp_err_t set_task_dimmer_power( task_dimmer_t* dimmer, double power ) {
     }
     else {
         /** 
-         * Calculate the dutty cycle
+         * Calculate dutty cycle
          * t = acos(1 - 2 * power) / (2 * pi * freq)
          * dutty = 1000 * t * 2 * freq
          **/
-        dutty = (uint16_t) round(1000 * acos(1 - 2*power) / (M_PI)); // result is in ticks 0 - 1000
+        dutty = (uint16_t) round(1000 * acos(1 - 2*power) / (M_PI)); // result is in ticks (0 - 1000)
     }
 
     // update dutty
     dimmer->dutty = dutty;
+
+    dutty = 1000 - dutty; // Invert signal
 
     // Notify task
     if( xTaskNotify(dimmer->task, dutty, eSetValueWithOverwrite) != pdTRUE ) {
