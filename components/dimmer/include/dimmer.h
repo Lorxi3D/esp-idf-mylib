@@ -30,7 +30,7 @@ esp_err_t stop_dimmer(dimmer_t *dimmer);
 
 esp_err_t set_dutty(dimmer_t *dimmer, uint16_t dutty);
 esp_err_t set_power(dimmer_t *dimmer, double power);
-uint8_t get_power(dimmer_t *dimmer);
+float get_power(dimmer_t *dimmer);
 
 // internal use functions
 float auto_frequency(uint8_t sync_gpio); // automatic frequency detection
@@ -52,4 +52,5 @@ esp_err_t delete_task_dimmer( task_dimmer_t* dimmer );
 void task_dimmer( void* arg );
 esp_err_t set_task_dimmer_dutty( task_dimmer_t* dimmer, uint16_t dutty );
 esp_err_t set_task_dimmer_power( task_dimmer_t* dimmer, double power );
+float get_task_dimmer_power(task_dimmer_t* dimmer);
 

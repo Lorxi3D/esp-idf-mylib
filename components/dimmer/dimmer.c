@@ -156,7 +156,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
         .sync_src = gpio_sync_source,
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(dimmer->timer, &sync_phase_config));
-    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, -1, true));
+    // ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, -1, true)); // start_dimmer is mandatory
     ESP_LOGI(TAG, "Dimmer created successfully");
 
     return ESP_OK;
@@ -168,11 +168,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
  * @return esp_err_t ESP_OK
 */
 esp_err_t delete_dimmer( dimmer_t *dimmer) {
-    // ESP_ERROR_CHECK(mcpwm_timer_stop(dimmer->timer));
-    // ESP_ERROR_CHECK(mcpwm_timer_disable(dimmer->timer));
-    // ESP_ERROR_CHECK(mcpwm_timer_delete(dimmer->timer));
-    // ESP_ERROR_CHECK(mcpwm_comparator_delete(dimmer->comparator));
-    // ESP_ERROR_CHECK(mcpwm_generator_delete(dimmer->generator));
+    ESP_ERROR_CHECK(mcpwm_timer_disable(dimmer->timer));
     dimmer->timer = NULL;
     dimmer->comparator = NULL;
     dimmer->generator = NULL;
@@ -256,10 +252,10 @@ esp_err_t stop_dimmer( dimmer_t *dimmer ) {
 /**
  * This function will return the power of the dimmer in percentage
  * @param *dimmer a pointer to the dimmer the struct 
- * @return uint8_t the power of the dimmer
+ * @return double the power of the dimmer in percentage 0 - 1
 */
-uint8_t get_power(dimmer_t *dimmer) {
-    return (uint8_t) ( 0.5 * (1 - cos(M_PI * dimmer->dutty / 1000)));
+float get_power(dimmer_t *dimmer) {
+    return ( 0.5 * (1 - cos(M_PI * dimmer->dutty / 1000.0)));
 }
 
 /** -------------------------( Task Dimmer Related )------------------------- */
@@ -462,4 +458,13 @@ esp_err_t set_task_dimmer_power( task_dimmer_t* dimmer, double power ) {
         ESP_LOGW(TAG, "Failed to send notification");
     }
     return ESP_OK;
+}
+
+/**
+ * This function will return the power of the dimmer in percentage
+ * @param *dimmer a pointer to the dimmer_task the struct 
+ * @return double the power of the dimmer in percentage 0 - 1
+*/
+float get_task_dimmer_power(task_dimmer_t* dimmer) {
+    return (float) ( 0.5 * (1 - cos(M_PI * dimmer->dutty / 1000.0)));
 }
