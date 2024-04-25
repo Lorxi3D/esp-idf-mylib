@@ -1,12 +1,4 @@
 menu "Dimmer"
-    config AUTO_FREQUENCY
-        bool "Auto Frequency"
-        default y
-        help
-            Enable this to automatically set the frequency.
-
-    if !AUTO_FREQUENCY
-
     choice
         prompt "Select Frequency"
         default FREQUENCY_60HZ
@@ -18,6 +10,4 @@ menu "Dimmer"
             bool "50Hz"
 
     endchoice
-
-    endif
 endmenu

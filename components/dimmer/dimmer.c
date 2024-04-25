@@ -7,9 +7,9 @@ uint32_t global_dimmer_generators = 0UL;
 
 // internal use functions
 
-float auto_frequency(uint8_t sync_gpio) {
-    return 60.0f; // hardcoded for now
-}
+// float auto_frequency(uint8_t sync_gpio) {
+//     return 60.0f; // hardcoded for now
+// }
 
 uint8_t set_group_id( uint8_t sync_gpio) {
     ESP_LOGI(TAG, "Selecting group ID automatically");
@@ -74,16 +74,13 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
     dimmer->gen_gpio = gen_gpio;
     dimmer->sync_gpio = sync_gpio;
     dimmer->dutty = 0;
-    #ifdef CONFIG_AUTO_FREQUENCY
-        dimmer->heartz = auto_frequency(sync_gpio);
+   
+    #ifdef CONFIG_FREQUENCY_60HZ
+        dimmer->heartz = 60;
+    #elif defined(CONFIG_FREQUENCY_50HZ)
+        dimmer->heartz = 50;
     #else
-        #ifdef CONFIG_FREQUENCY_60HZ
-            dimmer->heartz = 60;
-        #elif defined(CONFIG_FREQUENCY_50HZ)
-            dimmer->heartz = 50;
-        #else
-            #error "Please execute menuconfig and select a frequency"
-        #endif
+        #error "Please execute menuconfig and select a frequency"
     #endif
 
     ESP_ERROR_CHECK(validate_generator(gen_gpio));
@@ -156,7 +153,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
         .sync_src = gpio_sync_source,
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(dimmer->timer, &sync_phase_config));
-    // ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, -1, true)); // start_dimmer is mandatory
+    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, -1, true)); // start_dimmer is optional
     ESP_LOGI(TAG, "Dimmer created successfully");
 
     return ESP_OK;
@@ -168,6 +165,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
  * @return esp_err_t ESP_OK
 */
 esp_err_t delete_dimmer( dimmer_t *dimmer) {
+    ESP_ERROR_CHECK(mcpwm_generator_set_force_level(dimmer->generator, 0, true));
     ESP_ERROR_CHECK(mcpwm_timer_disable(dimmer->timer));
     dimmer->timer = NULL;
     dimmer->comparator = NULL;
@@ -273,16 +271,12 @@ void task_dimmer(void *arg) {
     ESP_ERROR_CHECK(validate_generator(args->gen_gpio));
     uint8_t group_id = set_group_id(args->sync_gpio);
     
-    #ifdef CONFIG_AUTO_FREQUENCY
-        float heartz = auto_frequency(args->sync_gpio);
+    #ifdef CONFIG_FREQUENCY_60HZ
+        float heartz = 60;
+    #elif defined(CONFIG_FREQUENCY_50HZ)
+        float heartz = 50;
     #else
-        #ifdef CONFIG_FREQUENCY_60HZ
-            float heartz = 60;
-        #elif defined(CONFIG_FREQUENCY_50HZ)
-            float heartz = 50;
-        #else
-            #error "Please execute menuconfig and select a frequency"
-        #endif
+        #error "Please execute menuconfig and select a frequency"
     #endif
 
     ESP_LOGI(TAG, "Create timer");
