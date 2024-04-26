@@ -1,22 +1,27 @@
-# ESP32 AC Dimmer
+# ESP32 AC Dimmer Control
 
 ## Description
 
-Control dimmerable circuits like lapms with help of ESP32nusing an external circuit. This library can control AC load with PWM signal. It accept a power percentage value from 0 to 1 or direct PWM dutty cycle witch will be automatically inverted to compatible with circuit.
-You can choose between manually control the dimmer or create a task to handle it with FreeRTOS 
+Control dimmerable circuits with help of ESP32 using an external circuit like in the diagram below. This library can control AC load with PWM signal. It accept a power percentage value from 0 to 1 or direct PWM dutty cycle [0 - 1000] witch will be automatically inverted to be compatible with the circuit.
+You can choose between manually control the dimmer or create a task that will handle it with FreeRTOS
+
+<p align="center">
+  <img src="./dimmer.svg" alt="Dimmer Circuit Diagram" >
+</p>
 
 ## Installation
 
-Just copy this file into your components file and import using the header
+Just copy this folder into your components and import using the header
 ```c
 #include <dimmer.h>
 ```
+You dont need to clone all the repository for use only this component.
 
 ## Documentation
 
-This library is based on [Espressif MCPWM](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/mcpwm.html), it requires and external circuit to handle grid voltage and it generate an inverted PWM signal witch will be synced with grid, as such it needs to known the frequency of grid, you can define it on menuconfig under "Component config -> Dimmer" (default 60Hz).
+This library is based on [Espressif MCPWM](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/mcpwm.html), it requires and external circuit to handle grid voltage and it generate an inverted PWM signal witch will be synced with grid, as such it needs to known the frequency of grid, you can define it in menuconfig under "Component config -> Dimmer" (default 60Hz), note that the selected frequency is global, all your dimmers will use this.
 
-As stated in espressif documentation you can have up to 3 PWM signal per sync source and a maximum  of 2 sync sources, the PWM signal is inverted as the triac has a minimum holding current that keeps him opened. In AC, the voltage passes 0 twice a period, during the zero-crossing the current is also 0 and the triac can close. To take advantage on that behavior, we use an inveter logic in the PWM since opening the triac its not a problem, we calculate when to trigger it so the desired dutty is achieved before the next zero-corring.
+As stated in espressif documentation you can have up to 3 PWM signal per sync source and a maximum  of 2 sync sources, the library will keep track and handle repeated sync sources to attempt make all working. The PWM signal is inverted as the triac has a minimum holding current that keeps him opened. In AC, the voltage passes 0 twice a period, during the zero-crossing the current is also 0 and then the triac can close. To take advantage on that behavior, we use an inveted logic in the PWM since opening the triac its not a problem, we calculate when to trigger it so the desired dutty is achieved until the next zero-crossing.
 
 There are two ways of using this library you can create an structure containing all necessary data to control the PWM signal or create a task, using FreeRTOS, to handle it and control via task notification with given functions.
 
@@ -40,17 +45,17 @@ typedef struct dimmer
 ```c
 esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio);
 ```
-- **create_dimmer()** This function will initilize all parameters and requirements for a pwm signal following [Espressif MCPWM](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/mcpwm.html) example. When it finish executing it will return ESP_OK, fill dimmer_t fields and start emitting a signal with 0 dutty cicly witch is basically OFF (VERIFICAR) , so tere is no need to call *dimmer_start()* after calling this funtion.
+- **create_dimmer()** This function will initilize all parameters and requirements for a pwm signal following [Espressif MCPWM](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/mcpwm.html) example. It will also initialize the structure and enable PWM output but it will start with 0 dutty by default. There is no need to call *start_dimmer()* and the PWM will not wait for a sync signal but it will sync as soon as one is received.
 
 ```c
 esp_err_t start_dimmer(dimmer_t *dimmer);
 ```
-- **start_dimmer()** This function will start the dimmer passed in its argument, witch means the pwm signal will be emited in the correspondent GPIO (VERIFICAR) and control will take effect.
+- **start_dimmer()** This function will start the dimmer passed in its argument, witch means the pwm signal will be emited in the correspondent GPIO and can be controled by *set_dutty()* or *set_power()*. This only removes a forced value on the PWM and only make sense to be used after *stop_dimmer()*. Its returns ESP_OK.
 
 ```c
 esp_err_t stop_dimmer(dimmer_t *dimmer);
 ```
-- **stop_dimmer()** This function will stop the especified dimmer immediately. The GPIO will be forced to 0 (may be we want to set it to 1 since logic is inverted). It returns ESP_OK.
+- **stop_dimmer()** This function will stop the especified dimmer immediately. The GPIO will be forced logic level LOW and can only be changed with *start_dimmer()*. It returns ESP_OK.
 
 ```c
 esp_err_t set_dutty(dimmer_t *dimmer, uint16_t dutty);
@@ -90,7 +95,7 @@ typedef struct task_dimmer
 ```c
 task_dimmer_t create_task_dimmer( uint8_t gen_gpio, uint8_t sync_gpio );
 ```
-- *create_task_dimmer()* This function will initialize the dimmer, it creates a task using FreeRTOS that will be running in paralel and using more memory for do this, once the task is created it will start outputting a PWM with value 0, witch is OFF (the circuit will not allow any current), then it will wait for updates via task notification, use *set_task_dimmer_dutty()* or *set_task_dimmer_power()* for control output.
+- *create_task_dimmer()* This function will initialize the dimmer, it creates a separeted task using FreeRTOS that will be running in paralel and using extra memory to do this (Note that it will create a new task for every dimmer) once the task is created it will start outputting a PWM with 0 dutty cycle by default ( witch is OFF as the circuit will not allow any current), then it will wait for updates via task notification, use *set_task_dimmer_dutty()* or *set_task_dimmer_power()* for control output.
 
 ```c
 esp_err_t set_task_dimmer_dutty( task_dimmer_t* dimmer, uint16_t dutty );

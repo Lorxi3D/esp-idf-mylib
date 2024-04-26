@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <dimmer.h>
 
 #define DIMMER_0_GEN_GPIO  2
@@ -15,13 +14,10 @@ void app_main(void) {
 
   dimmer_t dimmer_0;
   create_dimmer( &dimmer_0, DIMMER_0_GEN_GPIO, DIMMER_0_SYNC_GPIO );
-  start_dimmer(&dimmer_0);
 
   dimmer_t dimmer_1;
   create_dimmer( &dimmer_1, DIMMER_1_GEN_GPIO, DIMMER_1_SYNC_GPIO );
   set_dutty( &dimmer_1, 250 );
-  start_dimmer(&dimmer_1);
-
 
   while (1)
   {

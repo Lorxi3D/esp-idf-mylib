@@ -112,7 +112,7 @@ esp_err_t create_dimmer( dimmer_t *dimmer, uint8_t gen_gpio, uint8_t sync_gpio )
     };
     ESP_ERROR_CHECK(mcpwm_new_comparator(operator, &compare_config, &dimmer->comparator));
     // init compare for each comparator
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(dimmer->comparator, dimmer->dutty));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(dimmer->comparator, 1000)); // start with zero power
 
     ESP_LOGI(TAG, "Create generators");
     mcpwm_generator_config_t gen_config = {
