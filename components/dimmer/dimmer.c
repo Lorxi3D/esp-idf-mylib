@@ -1,3 +1,12 @@
+// Original code by
+/*
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
+
+// Modified code after here
+
 #include <dimmer.h>
 
 const static char *TAG = "dimmer";
