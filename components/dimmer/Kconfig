@@ -1,0 +1,13 @@
+menu "Dimmer"
+    choice
+        prompt "Select Frequency"
+        default FREQUENCY_60HZ
+
+        config FREQUENCY_60HZ
+            bool "60Hz"
+        
+        config FREQUENCY_50HZ
+            bool "50Hz"
+
+    endchoice
+endmenu
