@@ -5,18 +5,23 @@
 
 #ifndef __MENU_MANAGER_H__
 #define __MENU_MANAGER_H__
-
+#pragma once
+#include "freertos/idf_additions.h"
 #include "sdkconfig.h"
 #include <esp_err.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define END_MENU_FUNCTION end_menuFunction()
 #define SET_QUICK_FUNCTION setQuick_menuFunction()
 
-extern TaskHandle_t Menu_function;
-extern SemaphoreHandle_t Menu_mutex;
+extern TaskHandle_t tMenuFunction;
+extern QueueHandle_t qCommands;
 
 /**
  * Type with  possibles of action in menu system.
@@ -68,8 +73,6 @@ typedef struct {
 typedef struct {
   menu_node_t root;
   /**< Menu_node_t: origin of Menu System. */
-  Navigate_t (*input)(void);
-  /**< Function that have to return Navigate_t to navigate. */
   void (*display)(menu_path_t *current_path);
   /**< Function that receive menu_path_t and index for display current
    * selection. */
@@ -88,12 +91,23 @@ void menu_init(void *params);
 /**
  * @brief Use this function all option menus when finish
  */
-void end_menuFunction(void);
+void exitFunction(void);
+
+/**
+ * @brief Exec especific funtioon
+ *
+ * @param Function addres of function
+ */
+void execFunction(void (*function)(void *args));
 
 /**
  * @brief Use this function when your function is a wuick function before
  * end_menuFunction()
  */
 void setQuick_menuFunction(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__MENU_MANAGER_H__

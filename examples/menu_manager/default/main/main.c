@@ -11,11 +11,11 @@
 
 static const char *TAG = "main";
 
-QueueHandle_t qinput;
-
 void dumb(void *args) {
   ESP_LOGI(TAG, "I am dumb");
-  vTaskDelete(NULL);
+  while (true) {
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+  }
 }
 
 menu_node_t submenu[3] = {
@@ -35,34 +35,32 @@ menu_node_t root = {
 
 void simula_input(void *args) {
   Navigate_t teste = NAVIGATE_UP;
-  vTaskDelay(3000 / portTICK_PERIOD_MS);
+  vTaskDelay(6000 / portTICK_PERIOD_MS);
   ESP_LOGI(TAG, "NEXT");
-  xQueueSend(qinput, &teste, portMAX_DELAY);
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  xQueueSend(qCommands, &teste, portMAX_DELAY);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
   teste = NAVIGATE_SELECT;
   ESP_LOGI(TAG, "SELECT");
-  xQueueSend(qinput, &teste, portMAX_DELAY);
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  xQueueSend(qCommands, &teste, portMAX_DELAY);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
   teste = NAVIGATE_DOWN;
   ESP_LOGI(TAG, "DOWN");
-  xQueueSend(qinput, &teste, portMAX_DELAY);
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  xQueueSend(qCommands, &teste, portMAX_DELAY);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
   teste = NAVIGATE_SELECT;
   ESP_LOGI(TAG, "SELECT");
-  xQueueSend(qinput, &teste, portMAX_DELAY);
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  xQueueSend(qCommands, &teste, portMAX_DELAY);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
   teste = NAVIGATE_BACK;
   ESP_LOGI(TAG, "BACK");
-  xQueueSend(qinput, &teste, portMAX_DELAY);
-  vTaskDelay(3000 / portTICK_PERIOD_MS);
+  xQueueSend(qCommands, &teste, portMAX_DELAY);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
+  ESP_LOGI(TAG, "BACK");
+  xQueueSend(qCommands, &teste, portMAX_DELAY);
+  vTaskDelay(10000 / portTICK_PERIOD_MS);
+
   ESP_LOGI(TAG, "Finalizada");
   vTaskDelete(NULL);
-}
-
-Navigate_t map(void) {
-  Navigate_t teste;
-  xQueueReceive(qinput, &teste, portMAX_DELAY);
-  return teste;
 }
 
 void display(menu_path_t *current_path) {
@@ -77,10 +75,9 @@ void display(menu_path_t *current_path) {
 
 void app_main(void) {
 
-  qinput = xQueueCreate(5, sizeof(Navigate_t));
   menu_config_t config = {
       .root = root,
-      .input = &map,
+      .loop = true,
       .display = &display,
   };
 
