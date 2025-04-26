@@ -12,6 +12,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const static char *TAG = "menu_menager";
 
 TaskHandle_t Menu_function = NULL;
@@ -148,3 +152,7 @@ void setQuick_menuFunction(void) {
   xSemaphoreGive(Menu_mutex);
   (*show)(&path);
 }
+
+#ifdef __cplusplus
+}
+#endif
